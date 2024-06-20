@@ -1,27 +1,27 @@
-import {
-  FlatList,
-  Text,
-  View,
-  Image,
-  RefreshControl,
-  Alert,
-} from "react-native";
-import React, { useEffect, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { images } from "../../constants";
-import SearchInput from "../../components/SearchInput";
-import Trending from "../../components/Trending";
-import EmptyState from "../../components/EmptyState";
-import { getAllPosts, getLatestPosts } from "../../lib/appwrite";
-import useAppwrite from "../../lib/useAppwrite";
-import VideoCard from "../../components/VideoCard";
-import { useGlobalContext } from "../../context/GlobalProvider";
+import React, { useEffect, useState } from 'react';
+import { FlatList, RefreshControl, Text, View, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { images } from '../../constants';
+import SearchInput from '../../components/SearchInput';
+import Trending from '../../components/Trending';
+import EmptyState from '../../components/EmptyState';
+import { getAllPosts, getLatestPosts } from '../../lib/appwrite';
+import useAppwrite from '../../lib/useAppwrite';
+import VideoCard from '../../components/VideoCard';
+import { useGlobalContext } from '../../context/GlobalProvider';
 
 const Home = () => {
   const [refreshing, setRefreshing] = useState(false);
-  const { data: posts, refetch } = useAppwrite(getAllPosts);
+  const [posts, setPosts] = useState([]);
+  const { data: fetchedPosts, refetch } = useAppwrite(getAllPosts);
   const { data: latestPosts } = useAppwrite(getLatestPosts);
-  const { user, setUser, setIsLogged } = useGlobalContext();
+  const { user } = useGlobalContext();
+
+  useEffect(() => {
+    if (fetchedPosts) {
+      setPosts(fetchedPosts);
+    }
+  }, [fetchedPosts]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -29,12 +29,32 @@ const Home = () => {
     setRefreshing(false);
   };
 
+  const handlePostUpdated = (updatedPost) => {
+    // Update the local state with the updated post
+    const updatedPosts = posts.map((post) =>
+      post.$id === updatedPost.$id ? updatedPost : post
+    );
+    setPosts(updatedPosts);
+  };
+
+  const handlePostDeleted = (deletedPostId) => {
+    // Update the local state by removing the deleted post
+    const updatedPosts = posts.filter((post) => post.$id !== deletedPostId);
+    setPosts(updatedPosts);
+  };
+
   return (
     <SafeAreaView className="bg-primary h-full">
       <FlatList
         data={posts}
         keyExtractor={(item) => item.$id}
-        renderItem={({ item }) => <VideoCard video={item} />}
+        renderItem={({ item }) => (
+          <VideoCard
+            video={item}
+            onPostUpdated={handlePostUpdated}
+            onPostDeleted={handlePostDeleted}
+          />
+        )}
         ListHeaderComponent={() => (
           <View className="my-6 px-4 space-y-6">
             <View className="justify-between items-start flex-row mb-6">
@@ -57,7 +77,7 @@ const Home = () => {
 
             <SearchInput />
 
-            <View className="w-full flex-1  pt-5  pb-8">
+            <View className="w-full flex-1 pt-5 pb-8">
               <Text className="text-gray-100 text-lg mb-3 font-pregular">
                 Latest Videos
               </Text>
