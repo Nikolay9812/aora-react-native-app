@@ -1,32 +1,28 @@
-import { useState, useEffect } from "react";
-import { router, useRouter } from "expo-router";
-import { ResizeMode, Video } from "expo-av";
-import * as ImagePicker from "expo-image-picker";
-import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  View,
-  Text,
-  Alert,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Alert, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { ResizeMode, Video } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
+import { useGlobalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 
-import { icons } from "../../constants";
-import { getPostById, updateVideoPost } from "../../lib/appwrite";
-import CustomButton from "../../components/CustomButton";
-import FormField from "../../components/FormField";
-import { useGlobalContext } from "../../context/GlobalProvider";
+import { icons } from '../../constants';
+import { getPostById, updateVideoPost } from '../../lib/appwrite';
+import CustomButton from '../../components/CustomButton';
+import FormField from '../../components/FormField';
+import { useGlobalContext } from '../../context/GlobalProvider';
 
-const Edit = ({ route }) => {
-  const { postId } = route.params;
+const Edit = () => {
+  const { postId } = useGlobalSearchParams();
   const { user } = useGlobalContext();
+  const router = useRouter();
+  
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
-    title: "",
+    title: '',
     video: null,
     thumbnail: null,
-    prompt: "",
+    prompt: '',
   });
 
   useEffect(() => {
@@ -35,22 +31,25 @@ const Edit = ({ route }) => {
         const post = await getPostById(postId);
         setForm({
           title: post.title,
-          video: post.video,
-          thumbnail: post.thumbnail,
+          video: { uri: post.video },
+          thumbnail: { uri: post.thumbnail },
           prompt: post.prompt,
         });
       } catch (error) {
-        Alert.alert("Error", "Failed to fetch post data.");
+        console.error('Error fetching post:', error);
+        Alert.alert('Error', 'Failed to load post data.');
       }
     };
 
-    fetchPost();
+    if (postId) {
+      fetchPost();
+    }
   }, [postId]);
 
   const openPicker = async (selectType) => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes:
-        selectType === "image"
+        selectType === 'image'
           ? ImagePicker.MediaTypeOptions.Images
           : ImagePicker.MediaTypeOptions.Videos,
       aspect: [4, 3],
@@ -58,14 +57,14 @@ const Edit = ({ route }) => {
     });
 
     if (!result.canceled) {
-      if (selectType === "image") {
+      if (selectType === 'image') {
         setForm({
           ...form,
           thumbnail: result.assets[0],
         });
       }
 
-      if (selectType === "video") {
+      if (selectType === 'video') {
         setForm({
           ...form,
           video: result.assets[0],
@@ -73,32 +72,27 @@ const Edit = ({ route }) => {
       }
     } else {
       setTimeout(() => {
-        Alert.alert("Document picked", JSON.stringify(result, null, 2));
+        Alert.alert('Document picked', JSON.stringify(result, null, 2));
       }, 100);
     }
   };
 
   const submit = async () => {
-    if (
-      (form.prompt === "") |
-      (form.title === "") |
-      !form.thumbnail |
-      !form.video
-    ) {
-      return Alert.alert("Please provide all fields");
+    if (!form.title || !form.thumbnail || !form.video) {
+      return Alert.alert('Please provide all fields');
     }
 
     setUploading(true);
     try {
       await updateVideoPost(postId, {
-        ...form,
-        userId: user.$id,
+        title: form.title,
+        prompt: form.prompt,
       });
 
-      Alert.alert("Success", "Post updated successfully");
-      router.push("/home");
+      Alert.alert('Success', 'Post updated successfully');
+      router.push('/home');
     } catch (error) {
-      Alert.alert("Error", error.message);
+      Alert.alert('Error', error.message);
     } finally {
       setUploading(false);
     }
@@ -107,7 +101,7 @@ const Edit = ({ route }) => {
   return (
     <SafeAreaView className="bg-primary h-full">
       <ScrollView className="px-4 my-6">
-        <Text className="text-2xl text-white font-psemibold">Edit Video</Text>
+        <Text className="text-2xl text-white font-semibold">Edit Video</Text>
 
         <FormField
           title="Video Title"
@@ -118,11 +112,11 @@ const Edit = ({ route }) => {
         />
 
         <View className="mt-7 space-y-2">
-          <Text className="text-base text-gray-100 font-pmedium">
+          <Text className="text-base text-gray-100 font-medium">
             Upload Video
           </Text>
 
-          <TouchableOpacity onPress={() => openPicker("video")}>
+          <TouchableOpacity onPress={() => openPicker('video')}>
             {form.video ? (
               <Video
                 source={{ uri: form.video.uri }}
@@ -147,11 +141,11 @@ const Edit = ({ route }) => {
         </View>
 
         <View className="mt-7 space-y-2">
-          <Text className="text-base text-gray-100 font-pmedium">
+          <Text className="text-base text-gray-100 font-medium">
             Thumbnail Image
           </Text>
 
-          <TouchableOpacity onPress={() => openPicker("image")}>
+          <TouchableOpacity onPress={() => openPicker('image')}>
             {form.thumbnail ? (
               <Image
                 source={{ uri: form.thumbnail.uri }}
@@ -166,7 +160,7 @@ const Edit = ({ route }) => {
                   alt="upload"
                   className="w-5 h-5"
                 />
-                <Text className="text-sm text-gray-100 font-pmedium">
+                <Text className="text-sm text-gray-100 font-medium">
                   Choose a file
                 </Text>
               </View>
@@ -183,7 +177,7 @@ const Edit = ({ route }) => {
         />
 
         <CustomButton
-          title="Submit & Publish"
+          title="Update Post"
           handlePress={submit}
           containerStyles="mt-7"
           isLoading={uploading}
